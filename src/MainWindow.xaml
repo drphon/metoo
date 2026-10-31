@@ -1,0 +1,421 @@
+<Window x:Class="TodoClock.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:TodoClock"
+        Title="TodoClock"
+        Width="200" Height="200"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        ResizeMode="NoResize" Topmost="True" ShowInTaskbar="False" ShowActivated="False"
+        WindowStartupLocation="Manual"
+        FontFamily="{DynamicResource AppFont}" Foreground="{StaticResource TextBrush}"
+        UseLayoutRounding="True" TextOptions.TextFormattingMode="Ideal">
+
+    <Window.ContextMenu>
+        <ContextMenu x:Name="WidgetMenu" Opened="WidgetMenu_Opened">
+            <MenuItem x:Name="MenuToggle" Header="باز کردن / جمع کردن" Click="MenuToggle_Click"/>
+            <MenuItem x:Name="MenuOpacity" Header="شفافیت پیش فرض" Click="MenuOpacity_Click"/>
+            <Separator/>
+            <MenuItem x:Name="MenuStartup" Header="اجرا با روشن شدن ویندوز" Click="MenuStartup_Click"/>
+            <MenuItem x:Name="MenuHide" Header="پنهان کردن" Click="MenuHide_Click"/>
+            <Separator/>
+            <MenuItem x:Name="MenuExit" Header="خروج" Click="MenuExit_Click"/>
+        </ContextMenu>
+    </Window.ContextMenu>
+
+    <Grid x:Name="Root">
+
+        <!-- ================= EXPANDED PANEL ================= -->
+        <Grid x:Name="ExpandedView" Width="400" Height="640" HorizontalAlignment="Left" VerticalAlignment="Top"
+              Visibility="Collapsed" Opacity="0">
+            <Grid.RenderTransform>
+                <ScaleTransform x:Name="ExpScale" ScaleX="1" ScaleY="1"/>
+            </Grid.RenderTransform>
+
+            <!-- soft shadow / glow layer -->
+            <Border Margin="14" CornerRadius="44" Background="#B0101326" IsHitTestVisible="False">
+                <Border.Effect>
+                    <DropShadowEffect Color="#6D28D9" BlurRadius="22" ShadowDepth="0" Opacity="0.55"/>
+                </Border.Effect>
+            </Border>
+
+            <Border x:Name="Panel" Margin="12" CornerRadius="44" Background="{StaticResource GlassPanel}"
+                    BorderBrush="{StaticResource GlassBorder}" BorderThickness="1.5"
+                    MouseLeftButtonDown="Panel_MouseLeftButtonDown">
+                <Grid FlowDirection="RightToLeft">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- top glossy sheen -->
+                    <Border Grid.RowSpan="3" CornerRadius="44,44,0,0" Height="160" VerticalAlignment="Top" IsHitTestVisible="False">
+                        <Border.Background>
+                            <LinearGradientBrush StartPoint="0.5,0" EndPoint="0.5,1">
+                                <GradientStop Color="#1AFFFFFF" Offset="0"/>
+                                <GradientStop Color="#00FFFFFF" Offset="1"/>
+                            </LinearGradientBrush>
+                        </Border.Background>
+                    </Border>
+
+                    <!-- Header: clock + time + dates (drag here, double-click to collapse, wheel = opacity) -->
+                    <Grid x:Name="Header" Grid.Row="0" Background="Transparent"
+                          MouseLeftButtonDown="Header_MouseLeftButtonDown" MouseWheel="Opacity_MouseWheel"
+                          ToolTip="برای جابجایی بکش، دابل کلیک برای جمع کردن، اسکرول برای شفافیت" ToolTipService.InitialShowDelay="1500">
+                        <StackPanel HorizontalAlignment="Center">
+                            <local:ClockFace x:Name="BigClock" Width="120" Height="120" Margin="0,12,0,0" ShowInfo="False"/>
+                            <TextBlock HorizontalAlignment="Center" FlowDirection="LeftToRight" Margin="0,2,0,0">
+                                <Run x:Name="TimeMain" FontSize="30" FontWeight="Bold" Foreground="White"/><Run x:Name="TimeSec" FontSize="15" Foreground="{StaticResource AccentBrush}"/>
+                            </TextBlock>
+                            <TextBlock x:Name="FaDateText" HorizontalAlignment="Center" FontSize="15" FontWeight="Medium" Margin="0,-2,0,0"/>
+                            <TextBlock x:Name="EnDateText" HorizontalAlignment="Center" FontSize="12" FlowDirection="LeftToRight"
+                                       Foreground="{StaticResource SubTextBrush}" Margin="0,1,0,0"/>
+                            <TextBlock Text="به وقت تهران" HorizontalAlignment="Center" FontSize="10" Foreground="#7F8AB8" Margin="0,1,0,4"/>
+                        </StackPanel>
+
+                        <!-- collapse toggle (top start corner) -->
+                        <Button x:Name="CollapseBtn" Style="{StaticResource RoundButton}" HorizontalAlignment="Left" VerticalAlignment="Top"
+                                Margin="30,26,0,0" Click="ToggleBtn_Click" ToolTip="جمع کردن">
+                            <Path Data="M0,6 L6,0 L12,6" Stroke="White" StrokeThickness="1.8" StrokeStartLineCap="Round"
+                                  StrokeEndLineCap="Round" StrokeLineJoin="Round" Margin="0,0,0,1"/>
+                        </Button>
+
+                        <!-- remaining badge (top end corner) -->
+                        <Border x:Name="HeaderBadge" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,28,30,0"
+                                CornerRadius="12" Height="24" Padding="10,0" Background="#1AFFFFFF" BorderBrush="#3322D3EE" BorderThickness="1">
+                            <TextBlock x:Name="HeaderBadgeText" VerticalAlignment="Center" FontSize="11" Foreground="{StaticResource TextBrush}"/>
+                        </Border>
+                    </Grid>
+
+                    <!-- Tabs -->
+                    <Border Grid.Row="1" Margin="28,4,28,10" Height="36" CornerRadius="18" Background="#14FFFFFF"
+                            BorderBrush="#1AFFFFFF" BorderThickness="1">
+                        <UniformGrid Columns="3">
+                            <RadioButton x:Name="TabTodo" Style="{StaticResource TabRadio}" GroupName="Tabs" Content="کارها" Checked="Tab_Checked"/>
+                            <RadioButton x:Name="TabProj" Style="{StaticResource TabRadio}" GroupName="Tabs" Content="پروژه ها" Checked="Tab_Checked"/>
+                            <RadioButton x:Name="TabCal" Style="{StaticResource TabRadio}" GroupName="Tabs" Content="تقویم" Checked="Tab_Checked"/>
+                        </UniformGrid>
+                    </Border>
+
+                    <!-- Content -->
+                    <Grid Grid.Row="2" Margin="22,0,22,22">
+
+                        <!-- DAILY TODO PANE -->
+                        <local:TaskListView x:Name="TodoPane" Placeholder="یه کار جدید بنویس و اینتر بزن"
+                                            EmptyTitle="هنوز کاری ننوشتی" EmptySub="کارهات رو بالا بنویس تا یادت نره"/>
+
+                        <!-- PROJECTS PANE -->
+                        <Grid x:Name="ProjPane" Visibility="Collapsed">
+                            <!-- project list -->
+                            <DockPanel x:Name="ProjListView">
+                                <Grid DockPanel.Dock="Top" Margin="0,0,0,8">
+                                    <TextBox x:Name="NewProject" Style="{StaticResource InputBox}" Tag="اسم پروژه جدید، مثلا اسم یه سایت"
+                                             KeyDown="NewProject_KeyDown" MaxLength="80"/>
+                                    <Button Style="{StaticResource RoundButton}" HorizontalAlignment="Right" Margin="0,0,6,0"
+                                            Width="32" Height="32" Background="{StaticResource AccentGradient}" Click="AddProject_Click" ToolTip="ساختن پروژه">
+                                        <Path Data="M6,0 L6,12 M0,6 L12,6" Stroke="White" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                                    </Button>
+                                </Grid>
+                                <TextBlock x:Name="ProjFooter" DockPanel.Dock="Bottom" Margin="4,6,4,0" FontSize="12"
+                                           Foreground="{StaticResource SubTextBrush}"/>
+                                <Grid>
+                                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                                        <ItemsControl x:Name="ProjectList" Margin="0,0,4,0">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate DataType="{x:Type local:Project}">
+                                                    <Grid Margin="0,3">
+                                                        <Button x:Name="Card" Style="{StaticResource CardButton}" Click="OpenProject_Click" ToolTip="باز کردن پروژه">
+                                                            <DockPanel>
+                                                                <Grid DockPanel.Dock="Left" Width="38" Height="38">
+                                                                    <Ellipse Fill="{Binding ColorIndex, Converter={StaticResource ProjBrush}}"/>
+                                                                    <Ellipse Stroke="#55FFFFFF" StrokeThickness="1"/>
+                                                                    <TextBlock Text="{Binding Initial}" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                                               FontSize="16" FontWeight="Bold" Foreground="White" Margin="0,0,0,2"/>
+                                                                </Grid>
+                                                                <!-- remaining count bubble -->
+                                                                <Border x:Name="Count" DockPanel.Dock="Right" MinWidth="28" Height="28" CornerRadius="14" Padding="7,0"
+                                                                        Background="#1F22D3EE" BorderBrush="#5522D3EE" BorderThickness="1" VerticalAlignment="Center"
+                                                                        ToolTip="کارهای مانده">
+                                                                    <TextBlock Text="{Binding RemainingText}" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                                               FontSize="12" FontWeight="Bold" Foreground="{StaticResource AccentBrush}"/>
+                                                                </Border>
+                                                                <StackPanel Margin="10,0,8,0" VerticalAlignment="Center">
+                                                                    <TextBlock Text="{Binding Name}" FontSize="14" FontWeight="Medium" TextTrimming="CharacterEllipsis"
+                                                                               FlowDirection="{Binding Name, Converter={StaticResource DirConv}}" HorizontalAlignment="Left"/>
+                                                                    <StackPanel Orientation="Horizontal" Margin="0,1,0,0">
+                                                                        <TextBlock Text="{Binding Summary}" FontSize="11" Foreground="{StaticResource SubTextBrush}"/>
+                                                                        <TextBlock x:Name="Late" Text="{Binding OverdueText}" FontSize="11" Foreground="#FDA4AF"
+                                                                                   Margin="8,0,0,0" Visibility="Collapsed"/>
+                                                                    </StackPanel>
+                                                                </StackPanel>
+                                                            </DockPanel>
+                                                        </Button>
+
+                                                        <!-- hover actions -->
+                                                        <StackPanel x:Name="Actions" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center"
+                                                                    Margin="0,0,48,0" Opacity="0">
+                                                            <Button Style="{StaticResource RoundButton}" Width="26" Height="26" Background="#E0141830"
+                                                                    Click="RenameProject_Click" ToolTip="تغییر اسم">
+                                                                <Path Data="M0,10 L0,8 L7,1 L9,3 L2,10 Z" Stroke="{StaticResource AccentBrush}" StrokeThickness="1.3" StrokeLineJoin="Round"/>
+                                                            </Button>
+                                                            <Button Style="{StaticResource RoundButton}" Width="26" Height="26" Margin="4,0,0,0" Background="#E0141830"
+                                                                    Click="AskDeleteProject_Click" ToolTip="پاک کردن پروژه">
+                                                                <Path Data="M0,0 L8,8 M8,0 L0,8" Stroke="#FB7185" StrokeThickness="1.6" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                                                            </Button>
+                                                        </StackPanel>
+
+                                                        <!-- delete confirm -->
+                                                        <Border x:Name="Confirm" CornerRadius="16" Background="#FF261A33" BorderBrush="#88FB7185" BorderThickness="1"
+                                                                Visibility="Collapsed" Padding="12,0">
+                                                            <DockPanel VerticalAlignment="Center">
+                                                                <Button DockPanel.Dock="Right" Style="{StaticResource PillButton}" Content="نه" Margin="6,0,0,0" Click="CancelDeleteProject_Click"/>
+                                                                <Button DockPanel.Dock="Right" Style="{StaticResource PillButton}" Content="پاک کن" Background="#55FB7185" Click="DeleteProject_Click"/>
+                                                                <TextBlock VerticalAlignment="Center" FontSize="12" TextTrimming="CharacterEllipsis">
+                                                                    <Run Text="{Binding Name, Mode=OneWay}" FontWeight="Bold"/> <Run Text="پاک بشه؟"/>
+                                                                </TextBlock>
+                                                            </DockPanel>
+                                                        </Border>
+                                                    </Grid>
+                                                    <DataTemplate.Triggers>
+                                                        <DataTrigger Binding="{Binding HasOverdue}" Value="True">
+                                                            <Setter TargetName="Late" Property="Visibility" Value="Visible"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding HasRemaining}" Value="False">
+                                                            <Setter TargetName="Count" Property="Opacity" Value="0.4"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding ConfirmDelete}" Value="True">
+                                                            <Setter TargetName="Confirm" Property="Visibility" Value="Visible"/>
+                                                        </DataTrigger>
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter TargetName="Actions" Property="Opacity" Value="1"/>
+                                                        </Trigger>
+                                                    </DataTemplate.Triggers>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </ScrollViewer>
+                                    <StackPanel x:Name="ProjEmpty" VerticalAlignment="Center" HorizontalAlignment="Center" IsHitTestVisible="False">
+                                        <TextBlock Text="هنوز پروژه ای نساختی" HorizontalAlignment="Center" FontSize="15" Foreground="{StaticResource SubTextBrush}"/>
+                                        <TextBlock Text="برای هر سایت یا کار بزرگ یه پروژه بساز" HorizontalAlignment="Center" FontSize="12"
+                                                   Foreground="#7F8AB8" Margin="0,4,0,0"/>
+                                    </StackPanel>
+                                </Grid>
+                            </DockPanel>
+
+                            <!-- one project -->
+                            <DockPanel x:Name="ProjDetailView" Visibility="Collapsed">
+                                <Grid DockPanel.Dock="Top" Margin="0,0,0,8" Height="38">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Button Grid.Column="0" Style="{StaticResource RoundButton}" Width="32" Height="32" Click="BackToProjects_Click" ToolTip="برگشت به پروژه ها">
+                                        <Path Data="M6,0 L0,6 L6,12" Stroke="White" StrokeThickness="1.8" StrokeStartLineCap="Round"
+                                              StrokeEndLineCap="Round" StrokeLineJoin="Round"/>
+                                    </Button>
+                                    <Grid Grid.Column="1" Width="30" Height="30" Margin="8,0,0,0">
+                                        <Ellipse x:Name="DetailAvatar"/>
+                                        <TextBlock x:Name="DetailInitial" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                   FontSize="13" FontWeight="Bold" Foreground="White" Margin="0,0,0,1"/>
+                                    </Grid>
+                                    <Grid Grid.Column="2" Margin="8,0,6,0" VerticalAlignment="Center">
+                                        <TextBlock x:Name="DetailName" FontSize="16" FontWeight="Bold" TextTrimming="CharacterEllipsis"
+                                                   VerticalAlignment="Center" MouseLeftButtonDown="DetailName_MouseLeftButtonDown" ToolTip="دابل کلیک برای تغییر اسم"/>
+                                        <TextBox x:Name="RenameBox" Style="{StaticResource InputBox}" Height="34" Padding="12,0,12,0" FontSize="14"
+                                                 Visibility="Collapsed" KeyDown="RenameBox_KeyDown" LostKeyboardFocus="RenameBox_LostFocus" MaxLength="80"/>
+                                    </Grid>
+                                    <Button Grid.Column="3" x:Name="RenameBtn" Style="{StaticResource RoundButton}" Width="32" Height="32"
+                                            Click="DetailRename_Click" ToolTip="تغییر اسم">
+                                        <Path Data="M0,10 L0,8 L7,1 L9,3 L2,10 Z" Stroke="{StaticResource AccentBrush}" StrokeThickness="1.3" StrokeLineJoin="Round"/>
+                                    </Button>
+                                </Grid>
+                                <local:TaskListView x:Name="ProjectTasks" Placeholder="یه کار برای این پروژه بنویس"
+                                                    EmptyTitle="این پروژه هنوز کاری نداره" EmptySub="اولین کارش رو بالا بنویس"/>
+                            </DockPanel>
+                        </Grid>
+
+                        <!-- CALENDAR PANE -->
+                        <Grid x:Name="CalPane" Visibility="Collapsed">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+
+                            <Grid Grid.Row="0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <Button Grid.Column="0" Style="{StaticResource RoundButton}" Click="CalPrev_Click" ToolTip="ماه قبل">
+                                    <Path Data="M6,0 L0,6 L6,12" Stroke="White" StrokeThickness="1.8" StrokeStartLineCap="Round"
+                                          StrokeEndLineCap="Round" StrokeLineJoin="Round"/>
+                                </Button>
+                                <StackPanel Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                    <TextBlock x:Name="CalTitle" HorizontalAlignment="Center" FontSize="16" FontWeight="Bold"/>
+                                    <TextBlock x:Name="CalSub" HorizontalAlignment="Center" FontSize="11" Foreground="{StaticResource SubTextBrush}"/>
+                                </StackPanel>
+                                <Button Grid.Column="2" Style="{StaticResource RoundButton}" Click="CalNext_Click" ToolTip="ماه بعد">
+                                    <Path Data="M0,0 L6,6 L0,12" Stroke="White" StrokeThickness="1.8" StrokeStartLineCap="Round"
+                                          StrokeEndLineCap="Round" StrokeLineJoin="Round"/>
+                                </Button>
+                            </Grid>
+
+                            <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,6,0,6">
+                                <Button x:Name="CalTodayBtn" Style="{StaticResource PillButton}" Content="امروز" Margin="3,0" Click="CalToday_Click"/>
+                                <Button x:Name="CalModeBtn" Style="{StaticResource PillButton}" Content="میلادی" Margin="3,0" Click="CalMode_Click"/>
+                            </StackPanel>
+
+                            <UniformGrid x:Name="WeekHeader" Grid.Row="2" Columns="7" Rows="1" Margin="0,0,0,2"/>
+                            <UniformGrid x:Name="DaysGrid" Grid.Row="3" Columns="7" Rows="6"/>
+
+                            <!-- tasks of a clicked day -->
+                            <Border x:Name="DayPanel" Grid.Row="0" Grid.RowSpan="4" CornerRadius="22" Background="#FF181C38"
+                                    BorderBrush="#4422D3EE" BorderThickness="1" Padding="12,10" Visibility="Collapsed" FlowDirection="RightToLeft">
+                                <Border.RenderTransform><TranslateTransform x:Name="DayPanelShift"/></Border.RenderTransform>
+                                <DockPanel>
+                                    <Grid DockPanel.Dock="Top" Margin="0,0,0,8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Button Style="{StaticResource RoundButton}" Click="DayPanelBack_Click" ToolTip="برگشت به تقویم">
+                                            <Path Data="M6,0 L0,6 L6,12" Stroke="White" StrokeThickness="1.8" StrokeStartLineCap="Round"
+                                                  StrokeEndLineCap="Round" StrokeLineJoin="Round"/>
+                                        </Button>
+                                        <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
+                                            <TextBlock x:Name="DayTitle" FontSize="15" FontWeight="Bold"/>
+                                            <TextBlock x:Name="DaySub" FontSize="11" Foreground="{StaticResource SubTextBrush}" HorizontalAlignment="Left"/>
+                                        </StackPanel>
+                                    </Grid>
+                                    <Grid DockPanel.Dock="Top" Margin="0,0,0,6">
+                                        <TextBox x:Name="DayNewTodo" Style="{StaticResource InputBox}" Height="38" Tag="یه کار برای این روز (به لیست کارها)"
+                                                 KeyDown="DayNewTodo_KeyDown" MaxLength="300"/>
+                                        <Button Style="{StaticResource RoundButton}" HorizontalAlignment="Right" Margin="0,0,5,0"
+                                                Width="28" Height="28" Background="{StaticResource AccentGradient}" Click="DayAdd_Click" ToolTip="اضافه کن">
+                                            <Path Data="M5,0 L5,10 M0,5 L10,5" Stroke="White" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                                        </Button>
+                                    </Grid>
+                                    <Grid>
+                                        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                                            <ItemsControl x:Name="DayList" Margin="0,0,4,0">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate DataType="{x:Type local:DayEntry}">
+                                                        <Border x:Name="Row" CornerRadius="12" Padding="8,6" Margin="0,2" Background="#0FFFFFFF" BorderBrush="#12FFFFFF" BorderThickness="1">
+                                                            <DockPanel>
+                                                                <CheckBox DockPanel.Dock="Left" Style="{StaticResource TodoCheck}" VerticalAlignment="Center"
+                                                                          IsChecked="{Binding Item.Done, Mode=TwoWay}"/>
+                                                                <Border DockPanel.Dock="Right" CornerRadius="8" Padding="7,1" VerticalAlignment="Center" Margin="6,0,0,0"
+                                                                        Background="#1AFFFFFF" BorderBrush="#26FFFFFF" BorderThickness="1" MaxWidth="110">
+                                                                    <TextBlock Text="{Binding ListName}" FontSize="10.5" Foreground="{StaticResource SubTextBrush}" TextTrimming="CharacterEllipsis"/>
+                                                                </Border>
+                                                                <TextBlock x:Name="Txt" Text="{Binding Item.Text}" TextWrapping="Wrap" Margin="8,0,4,0" VerticalAlignment="Center" FontSize="13"
+                                                                           FlowDirection="{Binding Item.Text, Converter={StaticResource DirConv}}"/>
+                                                            </DockPanel>
+                                                        </Border>
+                                                        <DataTemplate.Triggers>
+                                                            <DataTrigger Binding="{Binding Item.Done}" Value="True">
+                                                                <Setter TargetName="Txt" Property="TextDecorations" Value="Strikethrough"/>
+                                                                <Setter TargetName="Txt" Property="Opacity" Value="0.45"/>
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding Item.DueState}" Value="overdue">
+                                                                <Setter TargetName="Row" Property="BorderBrush" Value="#55FB7185"/>
+                                                            </DataTrigger>
+                                                        </DataTemplate.Triggers>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </ScrollViewer>
+                                        <TextBlock x:Name="DayEmpty" Text="برای این روز کاری نداری" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                   FontSize="13" Foreground="{StaticResource SubTextBrush}" IsHitTestVisible="False"/>
+                                    </Grid>
+                                </DockPanel>
+                            </Border>
+                        </Grid>
+                    </Grid>
+
+                    <!-- DUE DATE PICKER (overlay over the whole panel) -->
+                    <Grid x:Name="DuePicker" Grid.RowSpan="3" Visibility="Collapsed" Background="Transparent"
+                          MouseLeftButtonDown="DuePickerBackdrop_MouseLeftButtonDown">
+                        <Border CornerRadius="44" Background="#B30A0C1C" IsHitTestVisible="False"/>
+                        <Border x:Name="PickerCard" Width="324" VerticalAlignment="Center" HorizontalAlignment="Center" CornerRadius="26"
+                                Background="{StaticResource GlassPanel}" BorderBrush="{StaticResource GlassBorder}" BorderThickness="1.5" Padding="14,12"
+                                MouseLeftButtonDown="PickerCard_MouseLeftButtonDown" RenderTransformOrigin="0.5,0.5">
+                            <Border.RenderTransform><ScaleTransform x:Name="PickerScale"/></Border.RenderTransform>
+                            <Border.Effect><DropShadowEffect Color="#000000" BlurRadius="24" ShadowDepth="0" Opacity="0.6"/></Border.Effect>
+                            <StackPanel>
+                                <DockPanel Margin="0,0,0,2">
+                                    <Button DockPanel.Dock="Right" Style="{StaticResource RoundButton}" Width="26" Height="26" Click="PickerClose_Click" ToolTip="بستن">
+                                        <Path Data="M0,0 L8,8 M8,0 L0,8" Stroke="White" StrokeThickness="1.5" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                                    </Button>
+                                    <TextBlock Text="تاریخ انجام" FontSize="15" FontWeight="Bold" VerticalAlignment="Center"/>
+                                </DockPanel>
+                                <TextBlock x:Name="PickerTask" FontSize="11.5" Foreground="{StaticResource SubTextBrush}" TextTrimming="CharacterEllipsis" Margin="0,0,0,8"/>
+                                <UniformGrid x:Name="QuickPicks" Columns="4" Margin="0,0,0,10">
+                                    <Button Style="{StaticResource PillButton}" Content="امروز" Margin="2,0" Click="PickToday_Click"/>
+                                    <Button Style="{StaticResource PillButton}" Content="فردا" Margin="2,0" Click="PickTomorrow_Click"/>
+                                    <Button Style="{StaticResource PillButton}" Content="هفته بعد" Margin="2,0" Click="PickNextWeek_Click"/>
+                                    <Button x:Name="PickNoneBtn" Style="{StaticResource PillButton}" Content="بدون تاریخ" Margin="2,0" Padding="4,3" Click="PickNone_Click"/>
+                                </UniformGrid>
+                                <Grid Margin="0,0,0,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Button Style="{StaticResource RoundButton}" Width="26" Height="26" Click="PickerPrev_Click" ToolTip="ماه قبل">
+                                        <Path Data="M5,0 L0,5 L5,10" Stroke="White" StrokeThickness="1.6" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"/>
+                                    </Button>
+                                    <TextBlock x:Name="PickerTitle" Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="14" FontWeight="Bold"/>
+                                    <Button Grid.Column="2" Style="{StaticResource RoundButton}" Width="26" Height="26" Click="PickerNext_Click" ToolTip="ماه بعد">
+                                        <Path Data="M0,0 L5,5 L0,10" Stroke="White" StrokeThickness="1.6" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"/>
+                                    </Button>
+                                </Grid>
+                                <UniformGrid x:Name="PickerWeek" Columns="7" Rows="1"/>
+                                <UniformGrid x:Name="PickerDays" Columns="7" Rows="6" Height="204"/>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- ================= COLLAPSED ROUND CLOCK ================= -->
+        <Grid x:Name="CollapsedView" Width="200" Height="200" HorizontalAlignment="Left" VerticalAlignment="Top"
+              RenderTransformOrigin="0.5,0.5"
+              MouseLeftButtonDown="Collapsed_MouseLeftButtonDown" MouseWheel="Opacity_MouseWheel"
+              MouseEnter="Collapsed_MouseEnter" MouseLeave="Collapsed_MouseLeave">
+            <Grid.RenderTransform>
+                <ScaleTransform x:Name="ColScale" ScaleX="1" ScaleY="1"/>
+            </Grid.RenderTransform>
+
+            <Ellipse Margin="12" Fill="#C0101326" IsHitTestVisible="False">
+                <Ellipse.Effect>
+                    <DropShadowEffect x:Name="GlowFx" Color="#7C3AED" BlurRadius="20" ShadowDepth="0" Opacity="0.6"/>
+                </Ellipse.Effect>
+            </Ellipse>
+
+            <local:ClockFace x:Name="SmallClock" Margin="8" ShowInfo="True"
+                             ToolTip="دابل کلیک: باز کردن کارها و تقویم | بکش: جابجایی | اسکرول: شفافیت | راست کلیک: منو"
+                             ToolTipService.InitialShowDelay="1500"/>
+
+            <Border x:Name="Badge" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,16,20,0"
+                    CornerRadius="12" MinWidth="24" Height="24" Padding="6,0" Background="{StaticResource AccentGradient}"
+                    BorderBrush="#AAFFFFFF" BorderThickness="1.5" IsHitTestVisible="False" Visibility="Collapsed">
+                <TextBlock x:Name="BadgeText" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="11"
+                           FontWeight="Bold" Foreground="White"/>
+            </Border>
+
+            <Button x:Name="ExpandBtn" Style="{StaticResource RoundButton}" Width="26" Height="26"
+                    HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,1"
+                    Background="#E0141830" Opacity="0" Click="ToggleBtn_Click" ToolTip="باز کردن">
+                <Path Data="M0,0 L5,5 L10,0" Stroke="White" StrokeThickness="1.8" StrokeStartLineCap="Round"
+                      StrokeEndLineCap="Round" StrokeLineJoin="Round" Margin="0,2,0,0"/>
+            </Button>
+        </Grid>
+    </Grid>
+</Window>

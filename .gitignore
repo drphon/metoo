@@ -1,0 +1,14 @@
+# .NET build output
+bin/
+obj/
+
+# Visual Studio / Rider user files
+*.user
+*.suo
+*.userosscache
+*.rsuser
+.vs/
+
+# OS junk
+.DS_Store
+Thumbs.db
